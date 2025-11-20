@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/:v/index.m3u8", "destination": "/api?v=:v&type=m3u8" },
+    { "source": "/:v/index.mp4", "destination": "/api?v=:v&type=mp4" }
+  ]
+}
