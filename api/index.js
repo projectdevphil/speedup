@@ -1,57 +1,40 @@
 export const config = {
-  runtime: 'edge', // This forces Vercel to use the Edge Runtime (like Cloudflare)
+  runtime: 'edge',
 };
 
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36";
-
-const BASE_HEADERS = {
-  "User-Agent": USER_AGENT,
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+417;", 
-  "Cache-Control": "max-age=0",
+// Standard headers for the API request
+const API_HEADERS = {
+  "User-Agent": "com.google.ios.youtube/19.45.4 (iPhone; U; CPU iPhone OS 17_5_1 like Mac OS X; en_US)",
+  "Content-Type": "application/json",
+  "X-Youtube-Client-Name": "5", // 5 = iOS Client
+  "X-Youtube-Client-Version": "19.45.4",
 };
 
 export default async function handler(request) {
   try {
     const url = new URL(request.url);
     const qp = url.searchParams;
-
-    // Parse the path to get the ID
-    // URL format: https://site.vercel.app/{id}/index.m3u8
-    const parts = url.pathname.split("/").filter(Boolean);
     
-    // Remove "api" from path if it exists due to Vercel internal routing
-    if (parts[0] === "api") parts.shift();
-    if (parts[0] === "index") parts.shift(); // Handle /api/index call specifically
+    // Clean up path handling for Vercel
+    const parts = url.pathname.split("/").filter((p) => p && p !== "api" && p !== "index");
 
-    // 1. Root Check
-    if (parts.length < 2) {
-      return new Response("Usage: /{videoID_or_channelID}/index.m3u8", {
-        status: 200,
-        headers: { "Content-Type": "text/plain" },
-      });
+    if (parts.length < 1) {
+      return new Response("Usage: /<VIDEO_ID_OR_CHANNEL_ID>/index.m3u8", { status: 200 });
     }
 
     const id = parts[0];
-    const filename = parts[1];
 
-    if (!filename.endsWith(".m3u8")) {
-      return new Response("Only .m3u8 files are supported.", { status: 400 });
-    }
-
-    // 2. Segment Proxy
+    // 1. Segment Proxy (High traffic, keep it fast)
     if (qp.has("url")) {
       return await handleProxyRequest(qp.get("url"), request);
     }
 
-    // 3. Variant Playlist Proxy
+    // 2. Variant Playlist Proxy
     if (qp.has("variant")) {
       return await handleVariantPlaylist(qp.get("variant"), request);
     }
 
-    // 4. Master Playlist Request
+    // 3. Master Playlist Logic
     return await handleMasterPlaylist(id, request);
 
   } catch (err) {
@@ -65,22 +48,33 @@ export default async function handler(request) {
 // --- Core Logic ---
 
 async function handleMasterPlaylist(id, request) {
-  const manifestUrl = await getHlsManifest(id);
+  // Resolve Channel ID/Handle to Video ID if necessary
+  let videoId = id;
+  if (id.startsWith("@") || id.length > 11) {
+    videoId = await resolveChannelToVideoId(id);
+    if (!videoId) {
+      return new Response("Could not find live stream for this channel.", { status: 404 });
+    }
+  }
+
+  // Fetch HLS Manifest using Internal API
+  const manifestUrl = await getHlsManifest(videoId);
 
   if (!manifestUrl) {
-    return new Response("Stream offline or ID invalid.", { status: 404, headers: corsHeaders() });
+    return new Response("Stream is offline, ID is invalid, or YouTube blocked the request.", { 
+      status: 404, 
+      headers: corsHeaders() 
+    });
   }
 
-  const response = await fetch(manifestUrl, { headers: BASE_HEADERS });
-  
-  if (!response.ok) {
-    return new Response("YouTube upstream error", { status: 502 });
-  }
+  // Fetch and Rewrite
+  const response = await fetch(manifestUrl);
+  if (!response.ok) return new Response("YouTube Upstream Error", { status: 502 });
 
   const text = await response.text();
   const proxyUrl = request.url.split("?")[0];
 
-  // Rewrite URLs to point back to Vercel
+  // Rewrite internal URLs to point back to this worker
   const rewritten = text.replace(
     /^(https?:\/\/.+)$/gm,
     (match) => `${proxyUrl}?variant=${encodeURIComponent(match)}`
@@ -96,8 +90,8 @@ async function handleMasterPlaylist(id, request) {
 }
 
 async function handleVariantPlaylist(targetUrl, request) {
-  const response = await fetch(targetUrl, { headers: BASE_HEADERS });
-  if (!response.ok) return new Response("Variant upstream error", { status: 502 });
+  const response = await fetch(targetUrl);
+  if (!response.ok) return new Response("Variant Fetch Failed", { status: 502 });
 
   const text = await response.text();
   const proxyUrl = request.url.split("?")[0];
@@ -110,23 +104,23 @@ async function handleVariantPlaylist(targetUrl, request) {
   return new Response(rewritten, {
     headers: {
       "Content-Type": "application/vnd.apple.mpegurl",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
       ...corsHeaders(),
     },
   });
 }
 
 async function handleProxyRequest(targetUrl, request) {
-  const headers = new Headers(BASE_HEADERS);
+  const headers = new Headers({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+  });
+  
   if (request.headers.has("Range")) {
     headers.set("Range", request.headers.get("Range"));
   }
 
-  const response = await fetch(targetUrl, {
-    headers: headers,
-    method: "GET"
-  });
+  const response = await fetch(targetUrl, { headers });
 
+  // Forward essential headers
   const newHeaders = new Headers(response.headers);
   newHeaders.set("Access-Control-Allow-Origin", "*");
 
@@ -136,34 +130,85 @@ async function handleProxyRequest(targetUrl, request) {
   });
 }
 
-// --- YouTube Scraper ---
+// --- YouTube API Logic (The Fix) ---
 
-async function getHlsManifest(id) {
-  const isVideoId = id.length === 11 && !id.startsWith("@");
-  const url = isVideoId 
-    ? `https://www.youtube.com/watch?v=${id}`
-    : `https://www.youtube.com/${id}/live`;
-
-  try {
-    const response = await fetch(url, { headers: BASE_HEADERS });
-    const html = await response.text();
-
-    // Reliable Method: ytInitialPlayerResponse JSON
-    const playerResponseMatch = html.match(/var ytInitialPlayerResponse\s*=\s*({.+?});/);
-    
-    if (playerResponseMatch) {
-      const json = JSON.parse(playerResponseMatch[1]);
-      if (json.streamingData && json.streamingData.hlsManifestUrl) {
-        return json.streamingData.hlsManifestUrl;
+async function getHlsManifest(videoId) {
+  // We use the iOS Client API because it natively supports HLS (m3u8)
+  const apiUrl = "https://www.youtube.com/youtubei/v1/player";
+  
+  const payload = {
+    videoId: videoId,
+    context: {
+      client: {
+        clientName: "IOS",
+        clientVersion: "19.45.4",
+        deviceMake: "Apple",
+        deviceModel: "iPhone16,2",
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+    playbackContext: {
+      contentPlaybackContext: {
+        html5Preference: "HTML5_PREF_WANTS"
       }
     }
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: API_HEADERS,
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    // Check for errors in the API response
+    if (data.playabilityStatus && data.playabilityStatus.status !== "OK") {
+      console.log("Playability Error:", data.playabilityStatus.reason);
+      return null;
+    }
+
+    // Extract HLS URL
+    if (data.streamingData && data.streamingData.hlsManifestUrl) {
+      return data.streamingData.hlsManifestUrl;
+    }
+  } catch (e) {
+    console.error("API Fetch Error:", e);
+  }
+
+  return null;
+}
+
+// Helper to resolve @handle or Channel ID to a Video ID
+async function resolveChannelToVideoId(id) {
+  try {
+    // We still try to scrape the /live page just to get the redirect ID
+    // This is usually less protected than the player page
+    const url = `https://www.youtube.com/${id}/live`;
+    const res = await fetch(url, { 
+      headers: { 
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "text/html"
+      },
+      redirect: "follow" 
+    });
     
-    // Fallback Method: Regex
-    const rawMatch = html.match(/"hlsManifestUrl":"([^"]+)"/);
-    if (rawMatch) return rawMatch[1].replace(/\\/g, "");
+    // If the URL redirected to /watch?v=..., we found it
+    const finalUrl = new URL(res.url);
+    if (finalUrl.pathname === "/watch" && finalUrl.searchParams.has("v")) {
+      return finalUrl.searchParams.get("v");
+    }
+    
+    // Fallback: Simple regex on the HTML if redirect didn't change URL bar
+    const html = await res.text();
+    const match = html.match(/"videoId":"([^"]+)"/);
+    if (match) return match[1];
 
   } catch (e) {
-    console.error(e);
+    console.error("Channel Resolve Error:", e);
   }
   return null;
 }
