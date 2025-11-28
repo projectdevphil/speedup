@@ -2,675 +2,540 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>speedup | Project Dev</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedUp by Project Dev - Next Gen Speed Test</title>
     
-    <!-- FONTS -->
+    <!-- Font Import: BR Sonoma -->
     <link href="https://fonts.cdnfonts.com/css/br-sonoma" rel="stylesheet">
-
+    
     <style>
-        /* --- 1. THEME CONFIGURATION --- */
+        /* --- RESET & VARIABLES --- */
         :root {
-            --bg-void: #000000;
-            --bg-glass: rgba(20, 20, 20, 0.6);
-            --border: rgba(255, 255, 255, 0.08);
-            --surface: #0a0a0a;
-            
-            --text-main: #ffffff;
-            --text-dim: #666666;
-            
-            --accent: #ffffff;
-            --glow: 0 0 40px rgba(255, 255, 255, 0.15);
-            
-            --font: 'BR Sonoma', -apple-system, BlinkMacSystemFont, sans-serif;
-            --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --dim-color: #444444;
+            --border-color: #333333;
+            --accent-color: #ffffff;
+            --font-main: 'BR Sonoma', sans-serif;
         }
 
-        /* --- 2. RESET & BASE --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: var(--bg-void);
-            color: var(--text-main);
-            font-family: var(--font);
-            height: 100vh;
-            width: 100%;
-            overflow: hidden; /* Locks window */
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
             display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         a { text-decoration: none; color: inherit; transition: opacity 0.3s; }
         a:hover { opacity: 0.7; }
+        ul { list-style: none; }
 
-        /* --- 3. LAYOUT STRUCTURE --- */
-        .interface {
+        /* --- HEADER --- */
+        header {
+            padding: 20px 40px;
             display: flex;
-            width: 100%;
-            height: 100%;
-            position: relative;
-            background-image: 
-                radial-gradient(circle at top right, rgba(30,30,30,0.5), transparent 40%),
-                radial-gradient(circle at bottom left, rgba(20,20,20,0.5), transparent 40%);
-        }
-
-        /* --- 4. SIDEBAR (Brand & Footer) --- */
-        .sidebar {
-            width: 380px;
-            background: rgba(5, 5, 5, 0.8);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
             justify-content: space-between;
-            padding: 3.5rem 3rem;
-            z-index: 100;
-            flex-shrink: 0;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .brand-block { display: flex; flex-direction: column; gap: 2rem; }
-
-        .main-logo {
-            width: 160px;
-            display: block;
-        }
-        .main-logo img { width: 100%; height: auto; }
-
-        .brand-text {
-            font-size: 0.95rem;
-            line-height: 1.7;
-            color: var(--text-dim);
-            font-weight: 300;
-        }
-
-        .partners-section {
-            margin-top: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        .label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #444;
-            margin-bottom: 1rem;
+        .brand {
             font-weight: 700;
-        }
-
-        .social-grid {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .icon-link {
-            width: 44px; height: 44px;
-            border: 1px solid var(--border);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s var(--ease-out);
-            background: var(--surface);
-        }
-        .icon-link:hover {
-            background: #fff;
-            border-color: #fff;
-            transform: translateY(-2px);
-        }
-        .icon-link svg { fill: #fff; width: 20px; transition: 0.3s; }
-        .icon-link:hover svg { fill: #000; }
-        
-        .phcorner-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; opacity: 0.7; transition: 0.3s; }
-        .icon-link:hover .phcorner-img { opacity: 1; }
-
-        .legal {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.75rem;
-            color: #444;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* --- 5. MAIN STAGE (Speed Test) --- */
-        .stage {
-            flex: 1;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Background Grid */
-        .stage::before {
-            content: '';
-            position: absolute;
-            top:0; left:0; width:100%; height:100%;
-            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 80px 80px;
-            pointer-events: none;
-            mask-image: radial-gradient(circle, black 40%, transparent 80%);
-            -webkit-mask-image: radial-gradient(circle, black 40%, transparent 80%);
-        }
-
-        /* Connection Pill */
-        .connection-status {
-            position: absolute;
-            top: 3rem;
-            right: 3rem;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(10,10,10,0.8);
-            border: 1px solid var(--border);
-            padding: 12px 24px;
-            border-radius: 100px;
-            backdrop-filter: blur(10px);
-            z-index: 10;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         .status-dot {
-            width: 6px; height: 6px;
-            background: #fff;
+            height: 10px;
+            width: 10px;
+            background-color: #fff;
             border-radius: 50%;
-            box-shadow: 0 0 10px #fff;
+            display: inline-block;
+            margin-right: 10px;
             animation: pulse 2s infinite;
         }
 
-        .ip-info {
-            text-align: right;
-            font-size: 0.8rem;
-            line-height: 1.3;
-        }
-        .ip-info span { display: block; }
-        .ip-val { font-weight: 700; color: #fff; font-size: 0.9rem; }
-        .ip-loc { color: var(--text-dim); }
-
-        /* Gauge Cluster */
-        .gauge-cluster {
-            position: relative;
-            width: 500px;
-            height: 500px;
+        /* --- MAIN CONTENT (SPEED TESTER) --- */
+        main {
+            flex: 1;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 40px 20px;
         }
 
-        canvas {
+        /* The Gauge/Circle */
+        .gauge-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .gauge-ring {
             position: absolute;
             width: 100%;
             height: 100%;
-            transform: rotate(135deg);
-        }
-
-        /* Main Interaction Button */
-        .start-btn {
-            position: absolute;
-            width: 160px;
-            height: 160px;
+            border: 1px solid var(--dim-color);
             border-radius: 50%;
-            border: none;
-            background: #fff;
-            color: #000;
-            font-family: var(--font);
-            font-weight: 800;
-            font-size: 1.8rem;
-            cursor: pointer;
-            z-index: 20;
-            transition: all 0.6s var(--ease-out);
-            box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
-        }
-        
-        .start-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 50px rgba(255,255,255,0.3);
-        }
-        
-        .start-btn.processing {
-            width: 0; height: 0; opacity: 0; font-size: 0;
         }
 
-        /* Live Readout */
-        .readout {
+        /* Spinning Loader */
+        .loader {
+            display: none;
+            width: 300px;
+            height: 300px;
             position: absolute;
+            border: 2px solid transparent;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .speed-display {
             text-align: center;
-            opacity: 0;
-            transform: scale(0.9);
-            transition: all 0.5s var(--ease-out);
-            z-index: 15;
-            pointer-events: none;
-        }
-        .readout.active { opacity: 1; transform: scale(1); }
-
-        .large-number {
-            font-size: 7rem;
-            font-weight: 200;
-            letter-spacing: -4px;
-            line-height: 0.9;
-            color: #fff;
-            font-variant-numeric: tabular-nums;
-            text-shadow: 0 0 30px rgba(255,255,255,0.2);
-        }
-        
-        .unit-label {
-            font-size: 1.2rem;
-            font-weight: 700;
-            letter-spacing: 6px;
-            color: var(--text-dim);
-            margin-top: 15px;
+            z-index: 2;
         }
 
-        /* Bottom Stats */
-        .stats-row {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 140px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            border-top: 1px solid var(--border);
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
+        .speed-value {
+            font-size: 4.5rem;
+            font-weight: 600;
+            line-height: 1;
+            display: block;
         }
 
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 0 3rem;
-            border-right: 1px solid var(--border);
-            transition: background 0.3s;
-        }
-        .stat-item:last-child { border-right: none; }
-        
-        .stat-item.active { background: rgba(255,255,255,0.03); }
-        .stat-item.active .stat-title { color: #fff; }
-
-        .stat-title {
-            font-size: 0.75rem;
+        .speed-unit {
+            font-size: 0.9rem;
+            color: #888;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: #555;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            margin-top: 10px;
+            display: block;
         }
-        .stat-val { font-size: 2.2rem; font-weight: 300; color: #fff; }
-        .stat-u { font-size: 1rem; color: #444; margin-left: 5px; }
 
-        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        /* Verdict / Recommendation Box */
+        .verdict-box {
+            text-align: center;
+            margin-bottom: 30px;
+            min-height: 60px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            max-width: 600px;
+        }
+        .verdict-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 5px; }
+        .verdict-desc { font-size: 0.95rem; color: #aaa; line-height: 1.4; }
 
-        /* --- 6. MOBILE RESPONSIVENESS --- */
-        @media (max-width: 1024px) {
-            body { 
-                flex-direction: column-reverse; /* Move footer to bottom */
-                overflow-y: auto; /* Allow scroll if needed on tiny screens */
-            }
+        /* Data Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-bottom: 50px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
 
-            .sidebar {
-                width: 100%;
-                height: auto;
-                padding: 2.5rem 1.5rem;
-                border-right: none;
-                border-top: 1px solid var(--border);
-                align-items: center;
-                text-align: center;
-            }
+        .stat-item h4 {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: 400;
+        }
 
-            .brand-block { align-items: center; gap: 1rem; }
-            .brand-text { max-width: 400px; font-size: 0.85rem; }
-            
-            .partners-section { 
-                margin-top: 2rem; 
-                width: 100%; 
-                align-items: center; 
-            }
-            .legal { width: 100%; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        .stat-item span {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
 
-            .stage { min-height: 600px; }
-            .connection-status { top: 1.5rem; right: 50%; transform: translateX(50%); width: max-content; }
-            
-            .gauge-cluster { width: 340px; height: 340px; }
-            .start-btn { width: 110px; height: 110px; font-size: 1.3rem; }
-            .large-number { font-size: 4.5rem; }
+        /* Start Button */
+        .start-btn {
+            background: transparent;
+            color: #fff;
+            border: 1px solid #fff;
+            padding: 15px 50px;
+            font-family: var(--font-main);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 50px;
+        }
 
-            .stats-row {
-                position: relative;
-                height: auto;
-                grid-template-columns: 1fr;
-                border-top: 1px solid var(--border);
-            }
-            
-            .stat-item {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                padding: 1.5rem 2rem;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-            .stat-title { margin-bottom: 0; }
-            .stat-val { font-size: 1.8rem; }
+        .start-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .start-btn:disabled {
+            border-color: var(--dim-color);
+            color: var(--dim-color);
+            cursor: not-allowed;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            background-color: #050505;
+            border-top: 1px solid var(--border-color);
+            padding: 60px 40px 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-col h3 {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .footer-logo {
+            width: 150px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .footer-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.6;
+            max-width: 300px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .social-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: #fff;
+            transition: fill 0.3s;
+        }
+        
+        .social-icon:hover svg {
+            fill: #aaa;
+        }
+
+        .footer-bottom {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
+            .social-links { justify-content: center; }
+            .footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
+            .footer-logo { margin: 0 auto 15px; }
+            .footer-desc { margin: 0 auto; }
+            .stats-grid { gap: 15px; }
+            .stat-item span { font-size: 1.2rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- INTERFACE WRAPPER -->
-    <div class="interface">
+    <!-- Header -->
+    <header>
+        <div class="brand">SpeedUp</div>
+        <div><span class="status-dot"></span>Connected</div>
+    </header>
 
-        <!-- 1. LEFT PANEL / BOTTOM MOBILE -->
-        <aside class="sidebar">
-            <div class="brand-block">
-                <a href="https://projectdevphil.github.io/about" target="_blank" class="main-logo">
-                    <img src="https://litestream-iptv.vercel.app/assets/project_dev_logo_(white).svg" alt="Project Dev Logo">
-                </a>
-                <p class="brand-text">
-                    Engineering the future of digital connectivity. Actual, functional, and useful tools for everyone.
+    <!-- Main Content -->
+    <main>
+        <div class="gauge-container">
+            <div class="gauge-ring"></div>
+            <!-- Spinning CSS Loader -->
+            <div class="loader" id="loader"></div>
+            
+            <div class="speed-display">
+                <span class="speed-value" id="mainDisplay">0.0</span>
+                <span class="speed-unit" id="unitLabel">Start Test</span>
+            </div>
+        </div>
+
+        <!-- Result Verdict (Hidden initially) -->
+        <div class="verdict-box" id="verdictBox">
+            <div class="verdict-title" id="verdictTitle"></div>
+            <div class="verdict-desc" id="verdictDesc"></div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-item">
+                <h4>PING</h4>
+                <span id="pingVal">--</span>
+            </div>
+            <div class="stat-item">
+                <h4>DOWNLOAD</h4>
+                <span id="downVal">--</span>
+            </div>
+            <div class="stat-item">
+                <h4>UPLOAD</h4>
+                <span id="upVal">--</span>
+            </div>
+        </div>
+
+        <button class="start-btn" id="startBtn" onclick="startRealTest()">GO</button>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <!-- Branding -->
+            <div class="footer-col">
+                <img src="https://litestream-iptv.vercel.app/assets/project_dev_logo_(white).svg" alt="Project Dev Logo" class="footer-logo">
+                <p class="footer-desc">
+                    Project Dev is a tech developer that behind SpeedUp. Creating next-generation web tools with minimalist precision.
                 </p>
             </div>
+            
+            <!-- Spacer -->
+            <div class="footer-col"></div>
 
-            <div class="partners-section">
-                
-                <!-- Socials -->
-                <div>
-                    <div class="label">Follow Us</div>
-                    <div class="social-grid">
-                        <!-- GitHub -->
-                        <a href="https://github.com/projectdevphil" target="_blank" class="icon-link" aria-label="GitHub">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                            </svg>
-                        </a>
-                        <!-- PhCorner -->
-                        <a href="https://phcorner.org/members/buzzybees.2661880/" target="_blank" class="icon-link" aria-label="PhCorner">
-                            <img src="https://data.phcorner.org/2020/11/11740226_192.webp" alt="PhCorner" class="phcorner-img">
-                        </a>
-                    </div>
-                </div>
-
-                <div class="legal">
-                    <span>&copy; 2025 Project Dev, All Rights Reserved</span>
-                    <span style="opacity: 0.5; font-family: monospace;">v1.0.0 Beta</span>
+            <!-- Social Links -->
+            <div class="footer-col">
+                <h3>Follow Us</h3>
+                <div class="social-links">
+                    <!-- GitHub Icon -->
+                    <a href="#" target="_blank" class="social-icon" title="GitHub">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </a>
+                    <!-- PHCorner Icon (Globe) -->
+                    <a href="#" target="_blank" class="social-icon" title="PHCorner">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    </a>
                 </div>
             </div>
-        </aside>
+        </div>
 
-        <!-- 2. CENTER STAGE -->
-        <main class="stage">
-            <!-- Connection Pill -->
-            <div class="connection-status">
-                <div class="status-dot"></div>
-                <div class="ip-info">
-                    <span class="ip-val" id="ipText">Initializing...</span>
-                    <span class="ip-loc" id="locText">Please Wait</span>
-                </div>
-            </div>
+        <div class="footer-bottom">
+            <span>&copy;2025 Project Dev, All Right Reserved</span>
+            <span>Version 2.0.3 Stable</span>
+        </div>
+    </footer>
 
-            <!-- Gauge Interaction -->
-            <div class="gauge-cluster">
-                <canvas id="uiCanvas"></canvas>
-                
-                <button class="start-btn" id="startBtn">GO</button>
-
-                <div class="readout" id="readout">
-                    <div class="large-number" id="liveVal">0.0</div>
-                    <div class="unit-label" id="liveUnit">MBPS</div>
-                </div>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-row">
-                <div class="stat-item" id="bx-ping">
-                    <div class="stat-title">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#666"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/></svg>
-                        Ping
-                    </div>
-                    <div><span class="stat-val" id="val-ping">--</span> <span class="stat-u">ms</span></div>
-                </div>
-                <div class="stat-item" id="bx-down">
-                    <div class="stat-title">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#666"><path d="M11 15h2V6h3l-4-5-4 5h3zM7 17h10v2H7z"/></svg>
-                        Download
-                    </div>
-                    <div><span class="stat-val" id="val-down">--</span> <span class="stat-u">Mbps</span></div>
-                </div>
-                <div class="stat-item" id="bx-up">
-                    <div class="stat-title">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#666"><path d="m16 9-4 5-4-5h3V4h2v5zM7 17h10v2H7z" transform="rotate(180 12 12)"/></svg>
-                        Upload
-                    </div>
-                    <div><span class="stat-val" id="val-up">--</span> <span class="stat-u">Mbps</span></div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- 3. LOGIC CORE -->
+    <!-- LOGIC SCRIPT -->
     <script>
-        /** CONFIG & ELEMENTS */
-        const canvas = document.getElementById('uiCanvas');
-        const ctx = canvas.getContext('2d');
-        const btn = document.getElementById('startBtn');
-        const readout = document.getElementById('readout');
-        const displayVal = document.getElementById('liveVal');
-        const displayUnit = document.getElementById('liveUnit');
-        const domIP = document.getElementById('ipText');
-        const domLoc = document.getElementById('locText');
+        // --- DOM Elements ---
+        const startBtn = document.getElementById('startBtn');
+        const mainDisplay = document.getElementById('mainDisplay');
+        const unitLabel = document.getElementById('unitLabel');
+        const loader = document.getElementById('loader');
+        const statsGrid = document.getElementById('statsGrid');
+        
+        const pingVal = document.getElementById('pingVal');
+        const downVal = document.getElementById('downVal');
+        const upVal = document.getElementById('upVal');
+        
+        const verdictBox = document.getElementById('verdictBox');
+        const verdictTitle = document.getElementById('verdictTitle');
+        const verdictDesc = document.getElementById('verdictDesc');
 
-        const els = {
-            ping: { box: document.getElementById('bx-ping'), val: document.getElementById('val-ping') },
-            down: { box: document.getElementById('bx-down'), val: document.getElementById('val-down') },
-            up: { box: document.getElementById('bx-up'), val: document.getElementById('val-up') }
-        };
+        // --- Configuration ---
+        // 1. DOWNLOAD: Wikimedia ~3.7MB file
+        const downloadAddr = "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"; 
+        const downloadSize = 3755498; 
 
-        let state = {
-            progress: 0, // 0 to 1
-            target: 0,
-            active: false
-        };
+        // 2. UPLOAD: Public Test Endpoint (HttpBin)
+        const uploadAddr = "https://httpbin.org/post"; 
 
-        /** CANVAS SETUP (HiDPI) */
-        function resize() {
-            const dpr = window.devicePixelRatio || 1;
-            const size = Math.min(canvas.parentElement.offsetWidth, canvas.parentElement.offsetHeight);
-            canvas.width = size * dpr;
-            canvas.height = size * dpr;
-            ctx.scale(dpr, dpr);
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        /** ANIMATION LOOP */
-        function draw() {
-            const dpr = window.devicePixelRatio || 1;
-            const s = canvas.width / dpr;
-            const cx = s / 2;
-            const cy = s / 2;
-            const r = (s / 2) - 15;
-
-            // Interpolation
-            state.progress += (state.target - state.progress) * 0.12;
-
-            ctx.clearRect(0, 0, s, s);
-
-            // 1. Passive Ring (Dark Grey)
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 2.25); // 270 degree arc
-            ctx.strokeStyle = '#111';
-            ctx.lineWidth = 6;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-
-            // 2. Active Ring (Bright White with Glow)
-            if (state.progress > 0.005) {
-                const end = (Math.PI * 0.75) + ( (Math.PI * 1.5) * state.progress );
-                
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, Math.PI * 0.75, end);
-                
-                // Gradient Stroke
-                const grad = ctx.createLinearGradient(0, s, s, 0);
-                grad.addColorStop(0, '#555');
-                grad.addColorStop(1, '#fff');
-                
-                ctx.strokeStyle = grad;
-                ctx.lineWidth = 12; // Thicker active line
-                ctx.lineCap = 'round';
-                
-                // Glow
-                ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
-                ctx.shadowBlur = 30;
-                ctx.stroke();
-                ctx.shadowBlur = 0; // Reset
-            }
-
-            requestAnimationFrame(draw);
-        }
-        draw();
-
-        /** LOGIC: IP FINDER */
-        fetch('https://1.1.1.1/cdn-cgi/trace').then(r=>r.text()).then(d=>{
-            const data = Object.fromEntries(d.trim().split('\n').map(l=>l.split('=')));
-            domIP.innerText = data.ip;
-            domLoc.innerText = (data.loc || 'Global') + ' Server';
-        }).catch(()=>{
-            domIP.innerText = "Connected";
-        });
-
-        /** LOGIC: TEST CONTROLLER */
-        btn.addEventListener('click', async () => {
-            // UI Transition
-            btn.classList.add('processing'); // Shrink button
-            readout.classList.add('active'); // Show numbers
-            resetVals();
-
-            try {
-                // 1. PING
-                displayUnit.innerText = "PING";
-                highlight('ping');
-                await runPing();
-                dim('ping');
-
-                // 2. DOWNLOAD
-                displayUnit.innerText = "MBPS";
-                highlight('down');
-                const dlSpeed = await runDownload();
-                dim('down');
-
-                // 3. UPLOAD (Simulated for Client-Side)
-                highlight('up');
-                await runUpload(dlSpeed);
-                dim('up');
-
-                // FINISH
-                state.target = 0;
-                displayVal.innerText = "DONE";
-                displayUnit.innerText = "";
-                await wait(1000);
-                
-                // Restore UI
-                btn.innerText = "RETEST";
-                btn.classList.remove('processing');
-                readout.classList.remove('active');
-
-            } catch (err) {
-                alert("Network Error");
-                location.reload();
-            }
-        });
-
-        /** TEST MODULES */
-        const wait = (ms) => new Promise(r => setTimeout(r, ms));
-
-        async function runPing() {
-            let pings = [];
-            for(let i=0; i<6; i++){
-                const start = performance.now();
-                await fetch(`https://www.gstatic.com/generate_204?t=${Date.now()}`, {mode:'no-cors'});
-                const time = performance.now() - start;
-                pings.push(time);
-                
-                displayVal.innerText = time.toFixed(0);
-                state.target = Math.min(time/150, 1);
-                await wait(150);
-            }
-            const min = Math.min(...pings);
-            els.ping.val.innerText = min.toFixed(0);
-            state.target = 0;
-        }
-
-        async function runDownload() {
-            // Unsplash Source (Reliable & High Bandwidth)
-            const URL = 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&q=85&fm=jpg&w=5000&t=' + Date.now();
-            const start = performance.now();
-            const response = await fetch(URL);
-            const reader = response.body.getReader();
-            let received = 0;
-            let measurements = [];
+        function startRealTest() {
+            // UI Reset
+            startBtn.disabled = true;
+            startBtn.style.opacity = '0';
+            statsGrid.style.opacity = '1';
+            statsGrid.style.transform = 'translateY(0)';
+            verdictBox.style.opacity = '0';
+            loader.style.display = 'block';
             
-            while(true) {
-                const {done, value} = await reader.read();
-                if(done) break;
-                received += value.length;
-                
-                const dur = (performance.now() - start) / 1000;
-                const speed = ((received * 8) / 1000000) / dur;
-                measurements.push(speed);
+            pingVal.innerText = '--';
+            downVal.innerText = '--';
+            upVal.innerText = '--';
 
-                displayVal.innerText = speed.toFixed(1);
+            measurePing();
+        }
+
+        function measurePing() {
+            unitLabel.innerText = "Testing Ping...";
+            const pStart = new Date().getTime();
+            
+            // Fetch tiny file (Google Favicon) to check latency
+            const img = new Image();
+            img.onload = function() {
+                const pEnd = new Date().getTime();
+                const pTime = pEnd - pStart;
+                mainDisplay.innerText = pTime;
+                pingVal.innerText = pTime + " ms";
+                setTimeout(measureDownload, 500);
+            };
+            img.onerror = function() {
+                // Fallback if blocked
+                const pEnd = new Date().getTime();
+                const pTime = pEnd - pStart;
+                mainDisplay.innerText = pTime;
+                pingVal.innerText = pTime + " ms";
+                setTimeout(measureDownload, 500);
+            }
+            // Cache buster
+            img.src = "https://www.google.com/favicon.ico?t=" + pStart;
+        }
+
+        function measureDownload() {
+            unitLabel.innerText = "Mbps (Downloading)";
+            const startTime = new Date().getTime();
+            const download = new Image();
+            
+            // Animation for visual feedback
+            let fakeAnim = setInterval(() => {
+                mainDisplay.innerText = (Math.random() * 20).toFixed(1);
+            }, 100);
+
+            download.onload = function () {
+                clearInterval(fakeAnim);
+                const endTime = new Date().getTime();
+                const duration = (endTime - startTime) / 1000; // Seconds
                 
-                // Visual Log Scale (Make it look faster)
-                let g = speed / 100;
-                if (g > 1) g = 1; 
-                state.target = g;
+                const bitsLoaded = downloadSize * 8;
+                const speedBps = bitsLoaded / duration;
+                const speedMbps = (speedBps / 1024 / 1024).toFixed(2);
+                
+                mainDisplay.innerText = speedMbps;
+                downVal.innerText = speedMbps;
+                
+                // Start Upload Test
+                setTimeout(measureUpload, 500);
+            }
+
+            download.onerror = function() {
+                clearInterval(fakeAnim);
+                mainDisplay.innerText = "Err";
+                finishTest(0);
             }
             
-            // Calc final speed (Top 30% average for accuracy)
-            measurements.sort((a,b)=>a-b);
-            const topPart = measurements.slice(Math.floor(measurements.length * 0.7));
-            const final = topPart.reduce((a,b)=>a+b, 0) / topPart.length;
-            
-            els.down.val.innerText = final.toFixed(1);
-            state.target = 0;
-            return final;
+            download.src = downloadAddr + "?n=" + Math.random();
         }
 
-        async function runUpload(dlSpeed) {
-            // Algorithm: Simulate cable/fiber asymmetry
-            const target = dlSpeed * (0.3 + Math.random() * 0.5);
-            let current = 0;
+        function measureUpload() {
+            unitLabel.innerText = "Mbps (Uploading)";
             
-            for(let i=0; i<50; i++) {
-                // Smooth easing towards target
-                current += (target - current) * 0.15;
-                // Add noise
-                let jitter = (Math.random() - 0.5) * (target * 0.1);
-                let val = Math.max(0, current + jitter);
+            // Generate 2MB of Junk Data
+            const junkData = "A".repeat(2000000); 
+            const blob = new Blob([junkData]);
+            const uploadSize = blob.size;
 
-                displayVal.innerText = val.toFixed(1);
-                state.target = Math.min(val/100, 1);
-                await wait(50);
+            const startTime = new Date().getTime();
+            const xhr = new XMLHttpRequest();
+
+            // Progress tracking
+            xhr.upload.onprogress = function(event) {
+                const duration = (new Date().getTime() - startTime) / 1000;
+                if(duration > 0) {
+                    const loadedBits = event.loaded * 8;
+                    const speed = (loadedBits / duration / 1024 / 1024).toFixed(1);
+                    mainDisplay.innerText = speed;
+                }
+            };
+
+            xhr.open("POST", uploadAddr, true);
+            
+            // On Success
+            xhr.onload = function() {
+                const endTime = new Date().getTime();
+                const duration = (endTime - startTime) / 1000;
+                
+                const bitsLoaded = uploadSize * 8;
+                const speedBps = bitsLoaded / duration;
+                const speedMbps = (speedBps / 1024 / 1024).toFixed(2);
+
+                mainDisplay.innerText = speedMbps;
+                upVal.innerText = speedMbps;
+                
+                finishTest(parseFloat(downVal.innerText));
+            };
+
+            // On Error (Fallback)
+            xhr.onerror = function() {
+                mainDisplay.innerText = "Err";
+                upVal.innerText = "Blocked";
+                finishTest(parseFloat(downVal.innerText));
+            };
+
+            xhr.send(blob);
+        }
+
+        function finishTest(finalSpeed) {
+            loader.style.display = 'none';
+            unitLabel.innerText = "Test Complete";
+            startBtn.innerText = "TEST AGAIN";
+            startBtn.disabled = false;
+            startBtn.style.opacity = '1';
+            
+            showVerdict(finalSpeed);
+        }
+
+        function showVerdict(speed) {
+            verdictBox.style.opacity = '1';
+            
+            if (speed >= 25) {
+                verdictTitle.innerText = "Excellent Connection";
+                verdictTitle.style.color = "#fff";
+                verdictDesc.innerText = "You can stream 4K (Ultra HD) videos and game online seamlessly.";
+            } else if (speed >= 10) {
+                verdictTitle.innerText = "Good Connection";
+                verdictTitle.style.color = "#eee";
+                verdictDesc.innerText = "Good for HD (1080p) streaming. You might experience slight buffering on 4K.";
+            } else if (speed >= 4) {
+                verdictTitle.innerText = "Fair Connection";
+                verdictTitle.style.color = "#ccc";
+                verdictDesc.innerText = "Suitable for SD (480p) or 720p streaming. Expect loading times on high quality.";
+            } else {
+                verdictTitle.innerText = "Poor Connection";
+                verdictTitle.style.color = "#888";
+                verdictDesc.innerText = "You will experience low quality video, buffering, and slow web browsing.";
             }
-            els.up.val.innerText = target.toFixed(1);
-            state.target = 0;
         }
-
-        /** UI HELPERS */
-        function highlight(key) { els[key].box.classList.add('active'); }
-        function dim(key) { els[key].box.classList.remove('active'); }
-        function resetVals() {
-            els.ping.val.innerText = '--';
-            els.down.val.innerText = '--';
-            els.up.val.innerText = '--';
-        }
-
     </script>
 </body>
 </html>
